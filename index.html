@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sword Servis – Teknik Servis Kayıt Sistemi</title>
+  <!-- Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- JsBarcode for barcode generation -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root{
+      --bg:#0b0e14; /* ana arka plan */
+      --panel:#141926; /* kart / panel */
+      --muted:#222839; /* daha koyu panel */
+      --text:#f2f4f8; /* ana yazı */
+      --sub:#a6adbb; /* ikincil yazı */
+      --brand:#7c5cff; /* vurgu */
+      --ok:#20c997; --warn:#f59f00; --bad:#e03131; --info:#339af0;
+      --border: #2a3042; --chip:#1b2030;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    a{color:inherit}
+    .hidden{display:none!important}
+    .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .sidebar{background:linear-gradient(180deg,var(--panel),var(--muted));border-right:1px solid var(--border);padding:18px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+    .brand-logo{width:36px;height:36px;border-radius:12px;background:conic-gradient(from 200deg at 50% 50%, #7c5cff, #20c997, #339af0, #7c5cff);box-shadow:var(--shadow)}
+    .brand h1{font-size:18px;margin:0}
+    .search{display:flex;gap:8px;margin:10px 0 20px}
+    .search input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0e1320;color:var(--text)}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav button{appearance:none;border:1px solid var(--border);background:transparent;color:var(--text);text-align:left;padding:12px 14px;border-radius:12px;cursor:pointer}
+    .nav button.active{background:linear-gradient(180deg,#141a2a,#0e1320);border-color:#3a4260;box-shadow:inset 0 0 0 1px #3a4260, var(--shadow)}
+    .nav .badge{float:right;background:var(--chip);border:1px solid var(--border);padding:2px 8px;border-radius:999px;color:var(--sub);font-size:12px}
+
+    .main{padding:22px 26px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .topbar .title{font-size:22px;font-weight:700}
+    .topbar .actions{display:flex;gap:8px}
+    .btn{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn.brand{background:var(--brand);border-color:#6e55eb;color:white}
+    .btn.ghost{background:transparent}
+    .btn.small{padding:6px 10px;font-size:12px;border-radius:10px}
+    .btn.ok{background:var(--ok);border-color:#18b187;color:#07140f}
+    .btn.warn{background:var(--warn);border-color:#db8e00;color:#140e07}
+    .btn.bad{background:var(--bad);border-color:#c22a2a;color:#140708}
+    .btn.info{background:var(--info);border-color:#2b83cc}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{grid-column:span 12;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card .card-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+    .card .card-b{padding:16px}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .stat{background:var(--muted);border:1px solid var(--border);border-radius:14px;padding:14px}
+    .stat .k{font-size:12px;color:var(--sub)}
+    .stat .v{font-size:20px;font-weight:700;margin-top:6px}
+
+    form.grid{grid-template-columns:repeat(12,1fr)}
+    .fi{grid-column:span 6;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .fi.full{grid-column:span 12}
+    label{font-size:12px;color:var(--sub)}
+    input,select,textarea{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0f1422;color:var(--text)}
+    textarea{min-height:80px;resize:vertical}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+    thead th{position:sticky;top:0;background:#11162a;border-bottom:1px solid #3a4260}
+    tbody tr:hover{background:#0f1322}
+
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{background:var(--chip);border:1px solid var(--border);padding:6px 10px;border-radius:999px;color:var(--sub);font-size:12px}
+
+    .login{display:grid;place-items:center;min-height:100vh;background:radial-gradient(1200px 600px at 10% -10%, #1b2140, transparent), var(--bg)}
+    .login .panel{width:420px;max-width:92vw;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:20px}
+    .login .brand{justify-content:center}
+
+    .status-dot{width:10px;height:10px;display:inline-block;border-radius:50%;margin-right:6px}
+    .sd-kontrol{background:#758bfd}
+    .sd-parca{background:#f59f00}
+    .sd-garanti{background:#48bfe3}
+    .sd-bakim{background:#ffd166}
+    .sd-onarildi{background:#20c997}
+    .sd-iade{background:#ffa8a8}
+    .sd-teslim{background:#22c55e}
+    .sd-disonarildi{background:#94d2bd}
+
+    .tag{font-size:11px;color:var(--sub);background:var(--chip);border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+
+    /* Yazdırma */
+    @media print{
+      .sidebar,.topbar,.no-print{display:none!important}
+      .card{box-shadow:none;border:0}
+      body{background:white;color:black}
+      table thead th{background:#efefef!important;color:#222}
+    }
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="login" class="login">
+    <div class="panel">
+      <div class="brand">
+        <div class="brand-logo"></div>
+        <h1>Sword Servis</h1>
+      </div>
+      <p style="color:var(--sub);margin:8px 0 16px">Tek admin girişli teknik servis kayıt paneli.</p>
+      <form id="loginForm">
+        <div class="fi full"><label>Kullanıcı Adı</label><input id="loginUser" autocomplete="username" placeholder="admin"/></div>
+        <div class="fi full"><label>Şifre</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="123456"/></div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+          <button class="btn brand" type="submit">Giriş Yap</button>
+          <span class="tag">Varsayılan: admin / 123456</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo"></div>
+        <h1>Sword Servis</h1>
+      </div>
+      <div class="search">
+        <input id="globalSearch" placeholder="Ara: müşteri, marka, model, servis no…"/>
+      </div>
+      <div class="nav">
+        <button data-view="dashboard" class="active">📊 Gösterge <span class="badge" id="badgeToplam">0</span></button>
+        <button data-view="customers">👤 Müşteriler</button>
+        <button data-view="services">🛠️ Servis Kayıtları</button>
+        <button data-view="alerts">⚠️ Servis İkaz</button>
+        <button data-view="external">📦 Dış Servis</button>
+        <button data-view="reports">📑 Servis Raporu</button>
+        <button data-view="settings">⚙️ Ayarlar</button>
+        <button id="logoutBtn" class="bad">🚪 Çıkış</button>
+      </div>
+      <div style="margin-top:16px;color:var(--sub);font-size:12px">© <span id="year"></span> DEKKO TEKNİK</div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="title" id="pageTitle">Gösterge Paneli</div>
+        <div class="actions no-print">
+          <button class="btn ghost" onclick="window.print()">🖨️ Sayfayı Yazdır</button>
+          <button class="btn info" id="quickAddBtn">➕ Hızlı Servis Kaydı</button>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="view">
+        <div class="grid">
+          <div class="card">
+            <div class="card-h"><strong>Durum Özeti</strong><div class="chips"><span class="chip">Filtre: Tümü</span></div></div>
+            <div class="card-b">
+              <div class="stats">
+                <div class="stat"><div class="k">Toplam Servis</div><div class="v" id="statToplam">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-kontrol"></span>Kontrol Edilecek</div><div class="v" id="statKontrol">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-parca"></span>Parça Siparişi</div><div class="v" id="statParca">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-garanti"></span>Garantiye Gönderilecek</div><div class="v" id="statGaranti">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-bakim"></span>Bakım Yapılacak</div><div class="v" id="statBakim">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-onarildi"></span>Onarıldı</div><div class="v" id="statOnarildi">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-iade"></span>Geri İade</div><div class="v" id="statIade">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-teslim"></span>Teslim Edildi</div><div class="v" id="statTeslim">0</div></div>
+                <div class="stat"><div class="k"><span class="status-dot sd-disonarildi"></span>Dış Servis Onarıldı</div><div class="v" id="statDisOnarildi">0</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CUSTOMERS -->
+      <section id="view-customers" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Müşteri Ekle</strong></div>
+          <div class="card-b">
+            <form id="customerForm" class="grid">
+              <div class="fi"><label>Müşteri Adı</label><input id="cName" required placeholder="Ad Soyad"/></div>
+              <div class="fi"><label>Telefon</label><input id="cPhone" required placeholder="05xx xxx xx xx"/></div>
+              <div class="fi full"><label>Not</label><textarea id="cNote" placeholder="İsteğe bağlı"></textarea></div>
+              <div class="fi full"><button class="btn brand" type="submit">Müşteri Kaydet</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-h"><strong>Müşteri Listesi</strong><button class="btn small ghost no-print" onclick="printTable('customersTable')">🖨️ Yazdır</button></div>
+          <div class="card-b">
+            <table id="customersTable">
+              <thead><tr><th>#</th><th>Ad</th><th>Telefon</th><th>Not</th><th class="no-print">İşlemler</th></tr></thead>
+              <tbody id="customersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SERVICES -->
+      <section id="view-services" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Servis Kaydı</strong><div class="chips"><span class="chip">Etiket: müşteri adı + numara + servis no + DEKKO TEKNİK</span></div></div>
+          <div class="card-b">
+            <form id="serviceForm" class="grid">
+              <div class="fi"><label>Servis No</label><input id="sNo" placeholder="Otomatik" disabled></div>
+              <div class="fi"><label>Teslim Alma Tarihi</label><input id="sDate" type="date" required></div>
+              <div class="fi"><label>Cihaz Türü</label><input id="sType" placeholder="Notebook, Masaüstü, Yazıcı…" required></div>
+              <div class="fi"><label>Marka</label><input id="sBrand" placeholder="Marka" required></div>
+              <div class="fi"><label>Model</label><input id="sModel" placeholder="Model" required></div>
+              <div class="fi"><label>Cihaz Sahibi</label>
+                <select id="sOwner" required></select>
+              </div>
+              <div class="fi full"><label>Yapılacak İşlemler</label><textarea id="sJobs" placeholder="Arıza tespiti, format, SSD değişimi…" required></textarea></div>
+              <div class="fi"><label>Ücret (₺)</label><input id="sFee" type="number" step="0.01" value="0"></div>
+              <div class="fi"><label>Ödeme</label>
+                <select id="sPay">
+                  <option value="Nakit">Nakit</option>
+                  <option value="Borc">Borç</option>
+                </select>
+              </div>
+              <div class="fi full"><label>Durum</label>
+                <select id="sStatus">
+                  <option>Kontrol Edilecek</option>
+                  <option>Parça Siparişi</option>
+                  <option>Garantiye Gönderilecek</option>
+                  <option>Bakım Yapılacak</option>
+                  <option>Onarıldı</option>
+                  <option>Geri İade</option>
+                  <option>Teslim Edildi</option>
+                  <option>Dış Servis Onarıldı</option>
+                </select>
+              </div>
+              <div class="fi full"><button class="btn brand" type="submit">Servis Kaydet</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-h"><strong>Servis Kayıtları</strong>
+            <div class="no-print" style="display:flex;gap:8px">
+              <button class="btn small ghost" onclick="printTable('servicesTable')">🖨️ Yazdır</button>
+              <select id="statusFilter" class="btn small">
+                <option value="">Duruma Göre Filtrele</option>
+                <option>Kontrol Edilecek</option>
+                <option>Parça Siparişi</option>
+                <option>Garantiye Gönderilecek</option>
+                <option>Bakım Yapılacak</option>
+                <option>Onarıldı</option>
+                <option>Geri İade</option>
+                <option>Teslim Edildi</option>
+                <option>Dış Servis Onarıldı</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-b">
+            <table id="servicesTable">
+              <thead>
+                <tr>
+                  <th>Servis No</th><th>Alım Tarihi</th><th>Tür</th><th>Marka</th><th>Model</th><th>Sahibi</th><th>Durum</th><th>Ücret</th><th>Ödeme</th><th class="no-print">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody id="servicesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALERTS (Servis İkaz) -->
+      <section id="view-alerts" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Servis İkaz</strong><span class="tag">15 günden eski ve teslim edilmemiş kayıtlar</span></div>
+          <div class="card-b">
+            <table id="alertsTable">
+              <thead><tr><th>Servis No</th><th>Gün</th><th>Alım Tarihi</th><th>Sahibi</th><th>Cihaz</th><th>Durum</th><th class="no-print">Etiket</th></tr></thead>
+              <tbody id="alertsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXTERNAL SERVICE -->
+      <section id="view-external" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Dış Servis Kaydı</strong></div>
+          <div class="card-b">
+            <form id="externalForm" class="grid">
+              <div class="fi"><label>Gönderi Tarihi</label><input id="xDate" type="date" required></div>
+              <div class="fi"><label>Cihaz Türü</label><input id="xType" required></div>
+              <div class="fi"><label>Marka</label><input id="xBrand" required></div>
+              <div class="fi"><label>Model</label><input id="xModel" required></div>
+              <div class="fi"><label>Kargo Firması</label><input id="xCargo" placeholder="Aras, Yurtiçi…"></div>
+              <div class="fi"><label>Kargo Takip No</label><input id="xTrack" placeholder="XXXXXXXX"></div>
+              <div class="fi"><label>Cihaz Sahibi</label><select id="xOwner" required></select></div>
+              <div class="fi full"><button class="btn brand" type="submit">Dış Servise Kaydet</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-h"><strong>Dış Servis Listesi</strong><button class="btn small ghost no-print" onclick="printTable('externalTable')">🖨️ Yazdır</button></div>
+          <div class="card-b">
+            <table id="externalTable">
+              <thead><tr><th>#</th><th>Gönderi Tarihi</th><th>Cihaz</th><th>Marka/Model</th><th>Sahibi</th><th>Kargo</th><th>Takip</th><th class="no-print">Etiket</th></tr></thead>
+              <tbody id="externalBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="view-reports" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Servis Raporu</strong></div>
+          <div class="card-b">
+            <form id="reportForm" class="grid no-print">
+              <div class="fi"><label>Başlangıç Tarihi</label><input id="rStart" type="date" required></div>
+              <div class="fi"><label>Bitiş Tarihi</label><input id="rEnd" type="date" required></div>
+              <div class="fi"><label>Özet</label>
+                <div class="chips">
+                  <span class="chip">Toplam Nakit: ₺<span id="sumCash">0</span></span>
+                  <span class="chip">Toplam Borç: ₺<span id="sumDebt">0</span></span>
+                  <span class="chip">Genel Toplam: ₺<span id="sumTotal">0</span></span>
+                </div>
+              </div>
+              <div class="fi full"><button class="btn brand" type="submit">Raporu Hesapla</button> <button class="btn ghost" type="button" onclick="window.print()">🖨️ Raporu Yazdır</button></div>
+            </form>
+            <div style="margin-top:12px">
+              <table id="reportTable">
+                <thead><tr><th>Durum</th><th>Adet</th></tr></thead>
+                <tbody id="reportBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="view-settings" class="view hidden">
+        <div class="card">
+          <div class="card-h"><strong>Ayarlar</strong></div>
+          <div class="card-b">
+            <form id="settingsForm" class="grid">
+              <div class="fi"><label>Admin Kullanıcı Adı</label><input id="setUser"/></div>
+              <div class="fi"><label>Admin Şifre</label><input id="setPass" type="password"/></div>
+              <div class="fi"><label>Servis No Ön Eki</label><input id="setPrefix" placeholder="SV-"/></div>
+              <div class="fi"><label>Servis Sayaç (Yıla özel)</label><input id="setCounter" type="number" min="1"/></div>
+              <div class="fi"><label>Etiket Genişlik (mm)</label><input id="setLabelW" type="number" min="20"/></div>
+              <div class="fi"><label>Etiket Yükseklik (mm)</label><input id="setLabelH" type="number" min="10"/></div>
+              <div class="fi full"><button class="btn brand" type="submit">Kaydet</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- QUICK ADD MODAL (very light) -->
+  <div id="quickModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50">
+    <div style="width:760px;max-width:92vw;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><strong>Hızlı Servis Kaydı</strong><button class="btn small ghost" onclick="closeQuick()">✖</button></div>
+      <form id="quickForm" class="grid" style="margin-top:10px">
+        <div class="fi"><label>Müşteri Adı</label><input id="qName" required></div>
+        <div class="fi"><label>Telefon</label><input id="qPhone" required></div>
+        <div class="fi"><label>Cihaz Türü</label><input id="qType" required></div>
+        <div class="fi"><label>Marka</label><input id="qBrand" required></div>
+        <div class="fi"><label>Model</label><input id="qModel" required></div>
+        <div class="fi"><label>Ücret</label><input id="qFee" type="number" step="0.01" value="0"></div>
+        <div class="fi"><label>Ödeme</label><select id="qPay"><option>Nakit</option><option>Borc</option></select></div>
+        <div class="fi full"><label>İşlemler</label><textarea id="qJobs" required></textarea></div>
+        <div class="fi full"><button class="btn brand" type="submit">Kaydet ve Etiket Yazdır</button></div>
+      </form>
+    </div>
+  </div>
+
+<script>
+// ==== Basit Depo (localStorage) ====
+const store = {
+  get(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def }catch(e){ return def } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)) }
+};
+
+// ==== Varsayılan Ayarlar ====
+const defaults = {
+  admin:{user:'admin', pass:'123456'},
+  numbering:{prefix:'SV-', counterByYear:{}},
+  label:{w:58, h:30} // mm
+};
+
+// ==== Global Durum ====
+let state = {
+  customers: store.get('ss_customers', []),
+  services: store.get('ss_services', []),
+  externals: store.get('ss_externals', []),
+  settings: store.get('ss_settings', defaults),
+  logged: store.get('ss_logged', false)
+};
+
+// Yardımcılar
+const $ = (q)=>document.querySelector(q);
+const $$ = (q)=>Array.from(document.querySelectorAll(q));
+const todayStr = ()=> new Date().toISOString().slice(0,10);
+const money = n => (Number(n)||0).toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function saveAll(){
+  store.set('ss_customers', state.customers);
+  store.set('ss_services', state.services);
+  store.set('ss_externals', state.externals);
+  store.set('ss_settings', state.settings);
+}
+
+// ==== Giriş / Çıkış ====
+function initLogin(){
+  $('#year').textContent = new Date().getFullYear();
+  const lf = $('#loginForm');
+  lf.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const u = $('#loginUser').value.trim()||'admin';
+    const p = $('#loginPass').value.trim()||'123456';
+    const set = state.settings.admin || defaults.admin;
+    if(u===set.user && p===set.pass){
+      state.logged = true; store.set('ss_logged', true);
+      $('#login').classList.add('hidden');
+      $('#app').classList.remove('hidden');
+      afterLogin();
+    } else {
+      alert('Hatalı kullanıcı adı veya şifre');
+    }
+  });
+  if(state.logged){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); afterLogin(); }
+}
+
+$('#logoutBtn')?.addEventListener('click', ()=>{ state.logged=false; store.set('ss_logged', false); location.reload(); });
+
+// ==== Navigasyon ====
+$$('.nav button[data-view]')?.forEach(b=>{
+  b.addEventListener('click', ()=>{
+    $$('.nav button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const v = b.dataset.view; showView(v);
+  });
+});
+
+function showView(v){
+  $$('.view').forEach(s=>s.classList.add('hidden'));
+  $('#view-'+v)?.classList.remove('hidden');
+  const titles = {
+    dashboard:'Gösterge Paneli', customers:'Müşteriler', services:'Servis Kayıtları', alerts:'Servis İkaz', external:'Dış Servis', reports:'Servis Raporu', settings:'Ayarlar'
+  };
+  $('#pageTitle').textContent = titles[v]||'';
+}
+
+// ==== Müşteriler ====
+function renderCustomers(){
+  const body = $('#customersBody'); body.innerHTML='';
+  state.customers.forEach((c,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${c.name}</td><td>${c.phone}</td><td>${c.note||''}</td>
+      <td class="no-print">
+        <button class="btn small" onclick="editCustomer(${i})">Düzenle</button>
+        <button class="btn small bad" onclick="delCustomer(${i})">Sil</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+  fillOwners();
+}
+function editCustomer(i){
+  const c = state.customers[i];
+  const name = prompt('Müşteri adı', c.name); if(name===null) return;
+  const phone = prompt('Telefon', c.phone); if(phone===null) return;
+  const note = prompt('Not', c.note||''); if(note===null) return;
+  state.customers[i] = {...c, name, phone, note};
+  saveAll(); renderCustomers();
+}
+function delCustomer(i){ if(confirm('Müşteri silinsin mi?')){ state.customers.splice(i,1); saveAll(); renderCustomers(); } }
+
+$('#customerForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const c = { id: crypto.randomUUID(), name: $('#cName').value.trim(), phone: $('#cPhone').value.trim(), note: $('#cNote').value.trim() };
+  if(!c.name || !c.phone){ alert('Ad ve telefon zorunlu'); return; }
+  state.customers.push(c); saveAll(); e.target.reset(); renderCustomers();
+});
+
+function fillOwners(){
+  const options = state.customers.map(c=>`<option value="${c.id}">${c.name} – ${c.phone}</option>`).join('');
+  $('#sOwner').innerHTML = '<option value="" disabled selected>Seçiniz</option>'+options;
+  $('#xOwner').innerHTML = '<option value="" disabled selected>Seçiniz</option>'+options;
+}
+
+// ==== Servis Numarası ====
+function nextServiceNo(){
+  const y = String(new Date().getFullYear());
+  const num = state.settings.numbering || defaults.numbering;
+  if(!num.counterByYear[y]) num.counterByYear[y]=1;
+  const counter = num.counterByYear[y]++;
+  state.settings.numbering = num; saveAll();
+  const prefix = (num.prefix||'SV-') + y + '-';
+  return prefix + String(counter).padStart(4,'0');
+}
+
+// ==== Servisler ====
+function renderServices(){
+  const body = $('#servicesBody'); body.innerHTML='';
+  const filter = $('#statusFilter').value;
+  const q = $('#globalSearch').value.toLowerCase();
+  const rows = state.services
+    .filter(s=>!filter || s.status===filter)
+    .filter(s=>{
+      const owner = state.customers.find(c=>c.id===s.ownerId);
+      const hay = [s.no, s.type, s.brand, s.model, owner?.name, owner?.phone].join(' ').toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b)=> b.created - a.created);
+
+  rows.forEach(s=>{
+    const owner = state.customers.find(c=>c.id===s.ownerId);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.no}</td>
+      <td>${s.date}</td>
+      <td>${s.type}</td>
+      <td>${s.brand}</td>
+      <td>${s.model}</td>
+      <td>${owner? owner.name : '-'}</td>
+      <td>
+        <select onchange="updateStatus('${s.id}', this.value)">
+          ${['Kontrol Edilecek','Parça Siparişi','Garantiye Gönderilecek','Bakım Yapılacak','Onarıldı','Geri İade','Teslim Edildi','Dış Servis Onarıldı']
+            .map(st=>`<option ${st===s.status?'selected':''}>${st}</option>`).join('')}
+        </select>
+      </td>
+      <td>₺${money(s.fee)}</td>
+      <td>${s.pay}</td>
+      <td class="no-print">
+        <button class="btn small" onclick="printLabel('${s.id}')">Etiket</button>
+        <button class="btn small" onclick="editService('${s.id}')">Düzenle</button>
+        <button class="btn small bad" onclick="delService('${s.id}')">Sil</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+  updateStats();
+}
+
+function updateStatus(id, status){
+  const s = state.services.find(x=>x.id===id); if(!s) return;
+  s.status = status; saveAll(); renderServices(); renderAlerts(); renderDashboard();
+}
+
+function editService(id){
+  const s = state.services.find(x=>x.id===id); if(!s) return;
+  const fee = prompt('Ücret (₺)', s.fee); if(fee===null) return;
+  const pay = prompt('Ödeme (Nakit/Borc)', s.pay); if(pay===null) return;
+  const jobs = prompt('Yapılacak işlemler', s.jobs); if(jobs===null) return;
+  s.fee = Number(fee)||0; s.pay = (pay==='Borc'?'Borc':'Nakit'); s.jobs = jobs; saveAll(); renderServices(); renderDashboard();
+}
+
+function delService(id){ if(confirm('Servis kaydı silinsin mi?')){ state.services = state.services.filter(s=>s.id!==id); saveAll(); renderServices(); renderDashboard(); renderAlerts(); } }
+
+$('#serviceForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const srv = {
+    id: crypto.randomUUID(),
+    no: nextServiceNo(),
+    date: $('#sDate').value || todayStr(),
+    type: $('#sType').value.trim(),
+    brand: $('#sBrand').value.trim(),
+    model: $('#sModel').value.trim(),
+    ownerId: $('#sOwner').value,
+    jobs: $('#sJobs').value.trim(),
+    fee: Number($('#sFee').value||0),
+    pay: $('#sPay').value,
+    status: $('#sStatus').value,
+    created: Date.now()
+  };
+  state.services.push(srv); saveAll(); e.target.reset(); $('#sNo').value=''; renderServices(); renderDashboard(); renderAlerts();
+  alert('Kayıt oluşturuldu. Etiket için listeden ilgili satırdaki Etiket düğmesine basın.');
+});
+
+$('#statusFilter')?.addEventListener('change', renderServices);
+$('#globalSearch')?.addEventListener('input', ()=>{ renderServices(); renderExternals(); });
+
+// ==== İkazlar ====
+function renderAlerts(){
+  const body = $('#alertsBody'); body.innerHTML='';
+  const now = new Date();
+  const items = state.services.filter(s=> s.status!=='Teslim Edildi');
+  items.forEach(s=>{
+    const days = Math.floor((now - new Date(s.date))/(1000*60*60*24));
+    if(days>=15){
+      const owner = state.customers.find(c=>c.id===s.ownerId);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s.no}</td><td>${days} gün</td><td>${s.date}</td><td>${owner?owner.name:''}</td><td>${s.type} ${s.brand} ${s.model}</td><td>${s.status}</td>
+        <td class="no-print"><button class="btn small" onclick="printLabel('${s.id}')">Etiket</button></td>`;
+      body.appendChild(tr);
+    }
+  });
+}
+
+// ==== Dış Servis ====
+function renderExternals(){
+  const body = $('#externalBody'); body.innerHTML='';
+  const q = $('#globalSearch').value.toLowerCase();
+  state.externals.slice().sort((a,b)=> b.created-a.created).forEach((x,i)=>{
+    const owner = state.customers.find(c=>c.id===x.ownerId);
+    const hay = [x.type,x.brand,x.model,owner?.name,owner?.phone,x.cargo,x.track].join(' ').toLowerCase();
+    if(!hay.includes(q)) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${x.date}</td><td>${x.type}</td><td>${x.brand} ${x.model}</td><td>${owner?owner.name:''}</td><td>${x.cargo||''}</td><td>${x.track||''}</td>
+      <td class="no-print"><button class="btn small" onclick="printExternalLabel(${i})">Etiket</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+$('#externalForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const ex = {
+    id: crypto.randomUUID(),
+    date: $('#xDate').value||todayStr(),
+    type: $('#xType').value.trim(),
+    brand: $('#xBrand').value.trim(),
+    model: $('#xModel').value.trim(),
+    cargo: $('#xCargo').value.trim(),
+    track: $('#xTrack').value.trim(),
+    ownerId: $('#xOwner').value,
+    created: Date.now()
+  };
+  state.externals.push(ex); saveAll(); e.target.reset(); renderExternals();
+});
+
+// ==== Raporlar ====
+$('#reportForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  calcReport();
+});
+
+function calcReport(){
+  const s = $('#rStart').value; const e = $('#rEnd').value;
+  const rs = state.services.filter(x=> x.date>=s && x.date<=e);
+  const cash = rs.filter(x=>x.pay==='Nakit').reduce((a,b)=>a+b.fee,0);
+  const debt = rs.filter(x=>x.pay==='Borc').reduce((a,b)=>a+b.fee,0);
+  $('#sumCash').textContent = money(cash);
+  $('#sumDebt').textContent = money(debt);
+  $('#sumTotal').textContent = money(cash+debt);
+  const counts = {};
+  rs.forEach(x=>{ counts[x.status] = (counts[x.status]||0)+1; });
+  const body = $('#reportBody'); body.innerHTML = '';
+  const allStatuses = ['Kontrol Edilecek','Parça Siparişi','Garantiye Gönderilecek','Bakım Yapılacak','Onarıldı','Geri İade','Teslim Edildi','Dış Servis Onarıldı'];
+  allStatuses.forEach(st=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${st}</td><td>${counts[st]||0}</td>`; body.appendChild(tr);
+  });
+}
+
+// ==== Dashboard ====
+function renderDashboard(){
+  $('#statToplam').textContent = state.services.length;
+  $('#badgeToplam').textContent = state.services.length;
+  const c = type=> state.services.filter(s=>s.status===type).length;
+  $('#statKontrol').textContent = c('Kontrol Edilecek');
+  $('#statParca').textContent = c('Parça Siparişi');
+  $('#statGaranti').textContent = c('Garantiye Gönderilecek');
+  $('#statBakim').textContent = c('Bakım Yapılacak');
+  $('#statOnarildi').textContent = c('Onarıldı');
+  $('#statIade').textContent = c('Geri İade');
+  $('#statTeslim').textContent = c('Teslim Edildi');
+  $('#statDisOnarildi').textContent = c('Dış Servis Onarıldı');
+}
+
+// ==== Etiket Yazdırma ====
+function mmToPx(mm){ return Math.round(mm * 3.7795275591); } // ~96dpi
+
+function buildLabelHTML({title='DEKKO TEKNİK', name, phone, sNo, svgHtml}){
+  const w = mmToPx((state.settings.label?.w)||defaults.label.w);
+  const h = mmToPx((state.settings.label?.h)||defaults.label.h);
+  return `<!DOCTYPE html><html><head><meta charset='utf-8'><title>Etiket</title>
+    <style> @page{ size:${w}px ${h}px; margin:0 } html,body{margin:0;padding:0} body{width:${w}px;height:${h}px;font-family:Inter,Arial,sans-serif}
+    .lab{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;width:100%;height:100%;padding:6px 8px}
+    .tt{font-weight:700;font-size:12px} .row{font-size:10px} .sno{font-size:11px;font-weight:700}
+    svg{width:100%;height:auto}
+    </style></head><body onload="window.print();setTimeout(()=>window.close(),200)">
+      <div class='lab'>
+        <div class='tt'>${title}</div>
+        <div class='row'>Müşteri: ${name||''}</div>
+        <div class='row'>Tel: ${phone||''}</div>
+        <div class='sno'>Servis No: ${sNo}</div>
+        ${svgHtml||''}
+      </div>
+    </body></html>`;
+}
+
+function genBarcodeSVG(code){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  JsBarcode(svg, code, {format:'CODE128', displayValue:false, margin:0, height:30});
+  return svg.outerHTML;
+}
+
+function printLabel(id){
+  const s = state.services.find(x=>x.id===id); if(!s) return;
+  const c = state.customers.find(x=>x.id===s.ownerId) || {name:'',phone:''};
+  const svg = genBarcodeSVG(s.no);
+  const w = window.open('', '_blank', 'width=400,height=300');
+  w.document.write( buildLabelHTML({ name:c.name, phone:c.phone, sNo:s.no, svgHtml:svg }) );
+  w.document.close();
+}
+
+function printExternalLabel(index){
+  const x = state.externals[index]; if(!x) return;
+  const c = state.customers.find(o=>o.id===x.ownerId) || {name:'',phone:''};
+  const no = x.track || (x.brand+"-"+x.model);
+  const svg = genBarcodeSVG(no);
+  const w = window.open('', '_blank', 'width=400,height=300');
+  w.document.write( buildLabelHTML({ name:c.name, phone:c.phone, sNo:no, svgHtml:svg }) );
+  w.document.close();
+}
+
+function printTable(tableId){
+  const html = `<html><head><meta charset='utf-8'><title>Yazdır</title>
+    <style>body{font-family:Inter,Arial,sans-serif;padding:12px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #999;padding:6px 8px;font-size:12px}
+    thead th{background:#eee}</style></head><body>` + document.getElementById(tableId).outerHTML + '</body></html>';
+  const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.focus(); w.print(); setTimeout(()=>w.close(), 200);
+}
+
+// ==== Hızlı Kayıt ====
+$('#quickAddBtn')?.addEventListener('click', ()=>{ $('#quickModal').classList.remove('hidden'); });
+function closeQuick(){ $('#quickModal').classList.add('hidden'); }
+$('#quickForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  // Müşteri var mı? Aynı telefon varsa kullan
+  const phone = $('#qPhone').value.trim();
+  let cust = state.customers.find(c=>c.phone===phone);
+  if(!cust){ cust = { id: crypto.randomUUID(), name: $('#qName').value.trim(), phone, note:'' }; state.customers.push(cust); }
+  const srv = {
+    id: crypto.randomUUID(), no: nextServiceNo(), date: todayStr(), type: $('#qType').value.trim(), brand: $('#qBrand').value.trim(), model: $('#qModel').value.trim(), ownerId: cust.id, jobs: $('#qJobs').value.trim(), fee: Number($('#qFee').value||0), pay: $('#qPay').value, status:'Kontrol Edilecek', created: Date.now() };
+  state.services.push(srv); saveAll(); renderCustomers(); renderServices(); renderDashboard(); renderAlerts();
+  closeQuick();
+  // Etiket otomatik
+  setTimeout(()=>printLabel(srv.id), 50);
+});
+
+// ==== Ayarlar ====
+function loadSettingsUI(){
+  const a = state.settings.admin || defaults.admin;
+  $('#setUser').value = a.user; $('#setPass').value = a.pass;
+  const num = state.settings.numbering || defaults.numbering;
+  $('#setPrefix').value = num.prefix || 'SV-';
+  const year = String(new Date().getFullYear());
+  $('#setCounter').value = (num.counterByYear?.[year]||1);
+  $('#setLabelW').value = state.settings.label?.w || defaults.label.w;
+  $('#setLabelH').value = state.settings.label?.h || defaults.label.h;
+}
+
+$('#settingsForm')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  state.settings.admin = { user: $('#setUser').value.trim()||'admin', pass: $('#setPass').value.trim()||'123456' };
+  const y = String(new Date().getFullYear());
+  state.settings.numbering = state.settings.numbering || {...defaults.numbering};
+  state.settings.numbering.prefix = $('#setPrefix').value.trim()||'SV-';
+  state.settings.numbering.counterByYear = state.settings.numbering.counterByYear || {};
+  state.settings.numbering.counterByYear[y] = Number($('#setCounter').value||1);
+  state.settings.label = { w:Number($('#setLabelW').value||defaults.label.w), h:Number($('#setLabelH').value||defaults.label.h) };
+  saveAll(); alert('Ayarlar güncellendi');
+});
+
+// ==== Sayfa yüklenince ====
+function afterLogin(){
+  // Tarih alanlarını doldur
+  $('#sDate').value = todayStr(); $('#xDate').value = todayStr();
+  $('#rStart').value = todayStr(); $('#rEnd').value = todayStr();
+  renderCustomers(); renderServices(); renderExternals(); renderAlerts(); renderDashboard(); loadSettingsUI();
+}
+
+initLogin();
+</script>
+</body>
+</html>
